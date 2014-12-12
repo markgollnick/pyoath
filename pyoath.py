@@ -58,7 +58,9 @@ def _HMAC(K, C, Mode=hashlib.sha1):
               MUST be synchronized between the HOTP generator (client)
               and the HOTP validator (server).
     @type C: str
-    @return: HMAC-SHA-1 result; a 160-bit (20-byte) string
+    @param Mode: The algorithm to use when generating the HMAC value
+    @type Mode: hashlib.sha1, hashlib.sha256, hashlib.sha512, or hashlib.md5
+    @return: HMAC result. If HMAC-SHA-1, result is a 160-bit (20-byte) string
     @rtype: str
     """
     return hmac.new(K, C, Mode).digest()
@@ -80,16 +82,14 @@ def _StToNum(S):
 
 def _Truncate(HS, Digit=6):
     """
-    Convert an HMAC-SHA-1 value into an HOTP value.
-
-    The algorithm for this function is defined in RFC 4226, Section 5.3.
+    Convert an HMAC value into an HOTP value.
 
     NOTE:
     Implementations MUST extract a 6-digit code at a minimum and possibly
     7 and 8-digit code.  Depending on security requirements, Digit = 7 or
     more SHOULD be considered in order to extract a longer HOTP value.
 
-    @param HS: An HMAC-SHA-1 value; a 160-bit (20-byte) string
+    @param HS: An HMAC value. If HMAC-SHA-1, will be a 160-bit (20-byte) string
     @type HS: str
     @param Digit: Digits to extract from the dynamically truncated HMAC value
     @type Digit: int
@@ -120,22 +120,19 @@ def HOTP(K, C, Digit=6, Mode=hashlib.sha1):
               MUST be synchronized between the HOTP generator (client)
               and the HOTP validator (server).
     @type C: int
+    @param Digit: Digits to extract from the dynamically truncated HMAC value
+    @type Digit: int
+    @param Mode: The algorithm to use when generating the HMAC value
+    @type Mode: hashlib.sha1, hashlib.sha256, hashlib.sha512, or hashlib.md5
+    @return: An HMAC-Based One-Time Password
+    @rtype: int
     """
     # We can describe the operations in 3 distinct steps:
 
-    # Step 1: Generate an HMAC-SHA-1 value Let HS = HMAC-SHA-1(K,C)  // HS
-    # is a 20-byte string
+    # Step 1: Generate an HMAC value
+    C_bytestr = struct.pack('!Q', C)  # Pack int C into an 8-byte string
+    HS = _HMAC(K, C_bytestr, Mode)    # HS is a 20-byte string
 
     # Step 2: Generate a 4-byte string (Dynamic Truncation)
-    # Let Sbits = DT(HS)   //  DT, defined below,
-    #                      //  returns a 31-bit string
-
     # Step 3: Compute an HOTP value
-    # Let Snum  = StToNum(Sbits)   // Convert S to a number in
-    #                                  0...2^{31}-1
-    # Return D = Snum mod 10^Digit //  D is a number in the range
-    #                                  0...10^{Digit}-1
-
-    C_bytestr = struct.pack('!Q', C)  # Pack int into an 8-byte string
-    HS = _HMAC(K, C_bytestr, Mode)  # Step 1
     return _Truncate(HS, Digit)
