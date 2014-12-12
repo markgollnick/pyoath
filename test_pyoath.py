@@ -136,3 +136,29 @@ class TOTPTestCase(TestCase):
         for i in range(len(expect)):
             result = pyoath.TOTP(secret, Digit=8)
             self.assertEqual(expect[i], result)
+
+    def test_totp_sha256_vectors(self):
+        secret = ('1234567890' * 3) + '12'  # 32 bytes for SHA-256
+        expect = [
+            '46119246',
+            '68084774',
+            '67062674',
+            '91819424',
+            '90698825',
+            '77737706']
+        for i in range(len(expect)):
+            result = pyoath.TOTP(secret, Digit=8, Mode=pyoath.hashlib.sha256)
+            self.assertEqual(expect[i], result)
+
+    def test_totp_sha512_vectors(self):
+        secret = ('1234567890' * 6) + '1234'  # 64 bytes for SHA-512
+        expect = [
+            '90693936',
+            '25091201',
+            '99943326',
+            '93441116',
+            '38618901',
+            '47863826']
+        for i in range(len(expect)):
+            result = pyoath.TOTP(secret, Digit=8, Mode=pyoath.hashlib.sha512)
+            self.assertEqual(expect[i], result)
