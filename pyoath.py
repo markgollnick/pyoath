@@ -3,18 +3,20 @@
 """
 Python OATH (One-time AuTHentication) implementation.
 
-This file implements HOTP as defined in RFC 4226, published December, 2005.
+This file implements HOTP as defined in RFC 4226, published December, 2005, and
+TOTP as defined in RFC 6238, published May 2011.
 
 Many of the variable names in this code were used because those were the names
-used in the publication.  Much of the documentation and many of the comments in
-this file was taken straight from the RFC documentation as well.
+used in those publications.  Much of the documentation and many of the comments
+in this file was taken straight from the RFC documentation as well.
 
-Please read the file rfc4226.txt for more information.
+Please read the files rfc4226.txt and rfc6238.txt for more information.
 """
 
 import hashlib
 import hmac
 import struct
+import time
 
 
 def _DT(String):
@@ -94,7 +96,7 @@ def _Truncate(HS, Digit=6):
     @param Digit: Digits to extract from the dynamically truncated HMAC value
     @type Digit: int
     @return: The final HOTP value
-    @rtype: int
+    @rtype: str
     """
     # The Truncate function performs Step 2 and Step 3, i.e., the dynamic
     # truncation and then the reduction modulo 10^Digit.  The purpose of
@@ -104,7 +106,7 @@ def _Truncate(HS, Digit=6):
     Sbits = _DT(HS)  # Step 2
     Snum = _StToNum(Sbits)  # Step 3
     D = Snum % (10 ** Digit)
-    return D
+    return str(D).zfill(Digit)
 
 
 def HOTP(K, C, Digit=6, Mode=hashlib.sha1):
@@ -125,7 +127,7 @@ def HOTP(K, C, Digit=6, Mode=hashlib.sha1):
     @param Mode: The algorithm to use when generating the HMAC value
     @type Mode: hashlib.sha1, hashlib.sha256, hashlib.sha512, or hashlib.md5
     @return: An HMAC-Based One-Time Password
-    @rtype: int
+    @rtype: str
     """
     # We can describe the operations in 3 distinct steps:
 
@@ -136,3 +138,28 @@ def HOTP(K, C, Digit=6, Mode=hashlib.sha1):
     # Step 2: Generate a 4-byte string (Dynamic Truncation)
     # Step 3: Compute an HOTP value
     return _Truncate(HS, Digit)
+
+
+def TOTP(K, X=30, Digit=6, Mode=hashlib.sha1):
+    """
+    TOTP: Time-Based One-Time Password Algorithm.
+
+    This variant of the HOTP algorithm specifies the calculation of a
+    one-time password value, based on a representation of the counter as
+    a time factor.
+
+    @param K: shared secret between client and server; each HOTP
+              generator has a different and unique secret K.
+    @type K: str
+    @param X: represents the time step in seconds (default value X = 30)
+    @type X: int
+    @param Digit: Digits to extract from the dynamically truncated HMAC value
+    @type Digit: int
+    @param Mode: The algorithm to use when generating the HMAC value
+    @type Mode: hashlib.sha1, hashlib.sha256, hashlib.sha512, or hashlib.md5
+    @return: A Time-Based One-Time Password
+    @rtype: str
+    """
+    unix_time = int(time.time())
+    unix_step = unix_time / X
+    return HOTP(K, unix_step, Digit, Mode)
