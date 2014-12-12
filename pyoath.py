@@ -29,9 +29,9 @@ def _DT(String):
          Let P = String[OffSet]...String[OffSet+3]
          Return the Last 31 bits of P
 
-    @param String: An HMAC-SHA-1 value; a 20-byte string
+    @param String: An HMAC value. If HMAC-SHA-1, is a 160-bit (20-byte) string.
     @type String: str
-    @return: The dynamically truncated HMAC-SHA-1 value; a 31-bit/4-byte string
+    @return: The dynamically truncated HMAC value. A 31-bit (4-byte) string.
     @rtype: str
     """
     Offset = ord(String[-1]) & 0x0f
@@ -51,7 +51,7 @@ def _HMAC(K, C, Mode=hashlib.sha1):
     """
     Generate an HMAC value.
 
-    The default mode is to generate an HMAC value using the SHA-1 algorithm.
+    The default mode is to generate an HMAC-SHA-1 value w/ the SHA-1 algorithm.
 
     @param K: shared secret between client and server; each HOTP
               generator has a different and unique secret K.
@@ -62,7 +62,7 @@ def _HMAC(K, C, Mode=hashlib.sha1):
     @type C: str
     @param Mode: The algorithm to use when generating the HMAC value
     @type Mode: hashlib.sha1, hashlib.sha256, hashlib.sha512, or hashlib.md5
-    @return: HMAC result. If HMAC-SHA-1, result is a 160-bit (20-byte) string
+    @return: HMAC result. If HMAC-SHA-1, result is a 160-bit (20-byte) string.
     @rtype: str
     """
     return hmac.new(K, C, Mode).digest()
@@ -73,7 +73,7 @@ def _StToNum(S):
     Convert S to a number.
 
     @param S: The bytestring to convert to an integer
-    @type S: bytestring
+    @type S: str
     @return: An integer representation of the bytestring (rightmost chr == LSB)
     @rtype: int
     """
@@ -91,7 +91,7 @@ def _Truncate(HS, Digit=6):
     7 and 8-digit code.  Depending on security requirements, Digit = 7 or
     more SHOULD be considered in order to extract a longer HOTP value.
 
-    @param HS: An HMAC value. If HMAC-SHA-1, will be a 160-bit (20-byte) string
+    @param HS: An HMAC string. If HMAC-SHA-1, is a 160-bit (20-byte) string.
     @type HS: str
     @param Digit: Digits to extract from the dynamically truncated HMAC value
     @type Digit: int
@@ -147,6 +147,12 @@ def TOTP(K, X=30, Digit=6, Mode=hashlib.sha1):
     This variant of the HOTP algorithm specifies the calculation of a
     one-time password value, based on a representation of the counter as
     a time factor.
+
+    NOTE:
+    TOTP implementations MAY use HMAC-SHA-256 or HMAC-SHA-512 functions,
+    based on SHA-256 or SHA-512 [SHA2] hash functions, instead of the
+    HMAC-SHA-1 function that has been specified for the HOTP computation
+    in [RFC4226].
 
     @param K: shared secret between client and server; each HOTP
               generator has a different and unique secret K.
