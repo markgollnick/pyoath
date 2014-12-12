@@ -34,7 +34,7 @@ def _DT(String):
     @return: The dynamically truncated HMAC-SHA-1 value; a 31-bit/4-byte string
     @rtype: str
     """
-    Offset = ord(String[19]) & 0x0f
+    Offset = ord(String[-1]) & 0x0f
     P = String[Offset:Offset+4]
     Bits = map(ord, P)
 
