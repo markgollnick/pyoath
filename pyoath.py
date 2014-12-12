@@ -45,9 +45,11 @@ def _DT(String):
     return ''.join(map(chr, Bits))
 
 
-def _HMAC_SHA1(K, C):
+def _HMAC(K, C, Mode=hashlib.sha1):
     """
-    Generate an HMAC-SHA-1 value.
+    Generate an HMAC value.
+
+    The default mode is to generate an HMAC value using the SHA-1 algorithm.
 
     @param K: shared secret between client and server; each HOTP
               generator has a different and unique secret K.
@@ -59,7 +61,7 @@ def _HMAC_SHA1(K, C):
     @return: HMAC-SHA-1 result; a 160-bit (20-byte) string
     @rtype: str
     """
-    return hmac.new(K, C, hashlib.sha1).digest()
+    return hmac.new(K, C, Mode).digest()
 
 
 def _StToNum(S):
@@ -105,7 +107,7 @@ def _Truncate(HS, Digit=6):
     return D
 
 
-def HOTP(K, C, Digit=6):
+def HOTP(K, C, Digit=6, Mode=hashlib.sha1):
     """
     HOTP: An HMAC-Based One-Time Password Algorithm.
 
@@ -135,5 +137,5 @@ def HOTP(K, C, Digit=6):
     #                                  0...10^{Digit}-1
 
     C_bytestr = struct.pack('!Q', C)  # Pack int into an 8-byte string
-    HS = _HMAC_SHA1(K, C_bytestr)  # Step 1
+    HS = _HMAC(K, C_bytestr, Mode)  # Step 1
     return _Truncate(HS, Digit)
