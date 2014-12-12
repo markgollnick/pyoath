@@ -29,7 +29,7 @@ class HMACSHA1TestCase(TestCase):
             '1b3c89f65e6c9e883012052823443f048b4332db'.decode('hex'),
             '1637409809a679dc698207310c8c7fc07290d9e5'.decode('hex')]
         for count in range(len(expect)):
-            result = pyoath._HMAC_SHA1(secret, struct.pack('!Q', count))
+            result = pyoath._HMAC(secret, struct.pack('!Q', count))
             self.assertEqual(expect[count], result)
 
 
@@ -55,7 +55,7 @@ class DTTestCase(TestCase):
             '2823443f'.decode('hex'),
             '2679dc69'.decode('hex')]
         for count in range(len(expect)):
-            hmac_sha1 = pyoath._HMAC_SHA1(secret, struct.pack('!Q', count))
+            hmac_sha1 = pyoath._HMAC(secret, struct.pack('!Q', count))
             result = pyoath._DT(hmac_sha1)
             self.assertEqual(expect[count], result)
 
