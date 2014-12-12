@@ -3,6 +3,7 @@
 import struct
 from unittest import TestCase
 
+from mock import patch, call
 
 import pyoath  # Unit Under Test
 
@@ -71,16 +72,67 @@ class HOTPTestCase(TestCase):
     def test_hotp_vectors_1_thru_10(self):
         secret = '12345678901234567890'
         expect = [
-            755224,
-            287082,
-            359152,
-            969429,
-            338314,
-            254676,
-            287922,
-            162583,
-            399871,
-            520489]
+            '755224',
+            '287082',
+            '359152',
+            '969429',
+            '338314',
+            '254676',
+            '287922',
+            '162583',
+            '399871',
+            '520489']
         for count in range(len(expect)):
             result = pyoath.HOTP(secret, count)
             self.assertEqual(expect[count], result)
+
+
+class TOTPTestCase(TestCase):
+
+    """
+    These tests are taken straight out of RFC 6238.
+
+    See that RFC document for more information.
+    """
+
+    def setUp(self):
+        self.addCleanup(patch.stopall)
+        self.time = patch.object(pyoath.time, 'time').start()
+        self.time.side_effect = [
+            59,          # 1970-01-01 00:00:59 +0000
+            1111111109,  # 2005-03-18 01:58:29 +0000
+            1111111111,  # 2005-03-18 01:58:31 +0000
+            1234567890,  # 2009-02-13 23:31:30 +0000
+            2000000000,  # 2033-05-18 03:33:20 +0000
+            20000000000  # 2603-10-11 11:33:20 +0000
+        ]
+
+    @patch.object(pyoath, 'HOTP')
+    def test_totp_time_vectors(self, hotp):
+        expect = [
+            int('0000000000000001', 16),
+            int('00000000023523ec', 16),
+            int('00000000023523ed', 16),
+            int('000000000273ef07', 16),
+            int('0000000003f940aa', 16),
+            int('0000000027bc86aa', 16)]
+        calls = []
+        for i in range(len(expect)):
+            pyoath.TOTP('secret')
+            calls.append(call('secret', expect[i], 6, pyoath.hashlib.sha1))
+        self.assertTrue(hotp.called)
+        self.assertEqual(len(expect), hotp.call_count)
+        hotp.assert_has_calls(calls)
+
+    def test_totp_sha1_vectors(self):
+        secret = '1234567890' * 2  # 20 bytes
+        expect = [
+            '94287082',
+            '07081804',
+            '14050471',
+            '89005924',
+            '69279037',
+            '65353130']
+        for i in range(len(expect)):
+            result = pyoath.TOTP(secret, Digit=8)
+            self.assertEqual(expect[i], result)
