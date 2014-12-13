@@ -1,4 +1,7 @@
+*.egg-info
 *.orig
 *.py[a-z]
 *~
 .coverage
+build/
+dist/
