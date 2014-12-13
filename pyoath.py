@@ -29,10 +29,10 @@ def _DT(String):
          Let P = String[OffSet]...String[OffSet+3]
          Return the Last 31 bits of P
 
-    @param String: An HMAC value. If HMAC-SHA-1, is a 160-bit (20-byte) string.
-    @type String: str
-    @return: The dynamically truncated HMAC value. A 31-bit (4-byte) string.
-    @rtype: str
+    @param String: An HMAC value. If HMAC-SHA-1, is 160-bits (20-bytes) long.
+    @type String: bytes
+    @return: The dynamically truncated HMAC value. 31-bits (4-bytes) long.
+    @rtype: bytes
     """
     OffsetBits = String[-1] if isinstance(String[-1], str) else chr(String[-1])
     Offset = ord(OffsetBits) & 0x0f
@@ -56,15 +56,15 @@ def _HMAC(K, C, Mode=hashlib.sha1):
 
     @param K: shared secret between client and server; each HOTP
               generator has a different and unique secret K.
-    @type K: str
+    @type K: bytes
     @param C: 8-byte counter value, the moving factor.  This counter
               MUST be synchronized between the HOTP generator (client)
               and the HOTP validator (server).
-    @type C: str
+    @type C: bytes
     @param Mode: The algorithm to use when generating the HMAC value
     @type Mode: hashlib.sha1, hashlib.sha256, hashlib.sha512, or hashlib.md5
-    @return: HMAC result. If HMAC-SHA-1, result is a 160-bit (20-byte) string.
-    @rtype: str
+    @return: HMAC result. If HMAC-SHA-1, result is 160-bits (20-bytes) long.
+    @rtype: bytes
     """
     return hmac.new(K, C, Mode).digest()
 
@@ -74,7 +74,7 @@ def _StToNum(S):
     Convert S to a number.
 
     @param S: The bytestring to convert to an integer
-    @type S: str
+    @type S: bytes
     @return: An integer representation of the bytestring (rightmost chr == LSB)
     @rtype: int
     """
@@ -92,8 +92,8 @@ def _Truncate(HS, Digit=6):
     7 and 8-digit code.  Depending on security requirements, Digit = 7 or
     more SHOULD be considered in order to extract a longer HOTP value.
 
-    @param HS: An HMAC string. If HMAC-SHA-1, is a 160-bit (20-byte) string.
-    @type HS: str
+    @param HS: An HMAC bytestring. If HMAC-SHA-1, is 160-bits (20-bytes) long.
+    @type HS: bytes
     @param Digit: Digits to extract from the dynamically truncated HMAC value
     @type Digit: int
     @return: The final HOTP value
