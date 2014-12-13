@@ -34,9 +34,10 @@ def _DT(String):
     @return: The dynamically truncated HMAC value. A 31-bit (4-byte) string.
     @rtype: str
     """
-    Offset = ord(String[-1]) & 0x0f
+    OffsetBits = String[-1] if isinstance(String[-1], str) else chr(String[-1])
+    Offset = ord(OffsetBits) & 0x0f
     P = String[Offset:Offset+4]
-    Bits = map(ord, P)
+    Bits = list(map(lambda x: ord(x) if isinstance(x, str) else x, P))
 
     # The reason for masking the most significant bit of P is to avoid
     # confusion about signed vs. unsigned modulo computations.  Different
@@ -44,7 +45,7 @@ def _DT(String):
     # signed bit removes all ambiguity.
     Bits[0] = Bits[0] & 0x7f
 
-    return ''.join(map(chr, Bits))
+    return ''.join(map(chr, Bits)) if str == bytes else bytes(Bits)  # Py 3
 
 
 def _HMAC(K, C, Mode=hashlib.sha1):
@@ -77,8 +78,8 @@ def _StToNum(S):
     @return: An integer representation of the bytestring (rightmost chr == LSB)
     @rtype: int
     """
-    Bytes = map(ord, S)
-    Length = len(Bytes)
+    Length = len(S)
+    Bytes = list(map(lambda x: ord(x) if isinstance(x, str) else x, S))
     return sum(Bytes[Length - 1 - i] << (8 * i) for i in range(Length))
 
 
@@ -167,7 +168,7 @@ def TOTP(K, X=30, Digit=6, Mode=hashlib.sha1):
     @rtype: str
     """
     unix_time = int(time.time())
-    unix_step = unix_time / X
+    unix_step = int(unix_time / X)
     return HOTP(K, unix_step, Digit, Mode)
 
 

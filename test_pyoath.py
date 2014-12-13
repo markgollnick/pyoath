@@ -7,6 +7,17 @@ from mock import patch, call
 
 import pyoath  # Unit Under Test
 
+try:
+    import builtins  # Python >= 3.x
+except ImportError:  # pragma: no cover
+    import __builtin__ as builtins  # Python < 3.x
+    class bytes(builtins.bytes):
+        def __new__(cls, x, encoding='ascii'):
+            return super(bytes, cls).__new__(cls, x.encode(encoding))
+        @classmethod
+        def fromhex(cls, x):
+            return x.decode('hex')
+
 
 class HMACSHA1TestCase(TestCase):
 
@@ -17,18 +28,18 @@ class HMACSHA1TestCase(TestCase):
     """
 
     def test_hmac_sha1_vectors_1_thru_10(self):
-        secret = '12345678901234567890'
+        secret = b'12345678901234567890'
         expect = [
-            'cc93cf18508d94934c64b65d8ba7667fb7cde4b0'.decode('hex'),
-            '75a48a19d4cbe100644e8ac1397eea747a2d33ab'.decode('hex'),
-            '0bacb7fa082fef30782211938bc1c5e70416ff44'.decode('hex'),
-            '66c28227d03a2d5529262ff016a1e6ef76557ece'.decode('hex'),
-            'a904c900a64b35909874b33e61c5938a8e15ed1c'.decode('hex'),
-            'a37e783d7b7233c083d4f62926c7a25f238d0316'.decode('hex'),
-            'bc9cd28561042c83f219324d3c607256c03272ae'.decode('hex'),
-            'a4fb960c0bc06e1eabb804e5b397cdc4b45596fa'.decode('hex'),
-            '1b3c89f65e6c9e883012052823443f048b4332db'.decode('hex'),
-            '1637409809a679dc698207310c8c7fc07290d9e5'.decode('hex')]
+            bytes.fromhex('cc93cf18508d94934c64b65d8ba7667fb7cde4b0'),
+            bytes.fromhex('75a48a19d4cbe100644e8ac1397eea747a2d33ab'),
+            bytes.fromhex('0bacb7fa082fef30782211938bc1c5e70416ff44'),
+            bytes.fromhex('66c28227d03a2d5529262ff016a1e6ef76557ece'),
+            bytes.fromhex('a904c900a64b35909874b33e61c5938a8e15ed1c'),
+            bytes.fromhex('a37e783d7b7233c083d4f62926c7a25f238d0316'),
+            bytes.fromhex('bc9cd28561042c83f219324d3c607256c03272ae'),
+            bytes.fromhex('a4fb960c0bc06e1eabb804e5b397cdc4b45596fa'),
+            bytes.fromhex('1b3c89f65e6c9e883012052823443f048b4332db'),
+            bytes.fromhex('1637409809a679dc698207310c8c7fc07290d9e5')]
         for count in range(len(expect)):
             result = pyoath._HMAC(secret, struct.pack('!Q', count))
             self.assertEqual(expect[count], result)
@@ -43,18 +54,18 @@ class DTTestCase(TestCase):
     """
 
     def test_dynamic_truncation_vectors_1_thru_10(self):
-        secret = '12345678901234567890'
+        secret = b'12345678901234567890'
         expect = [
-            '4c93cf18'.decode('hex'),
-            '41397eea'.decode('hex'),
-            '082fef30'.decode('hex'),
-            '66ef7655'.decode('hex'),
-            '61c5938a'.decode('hex'),
-            '33c083d4'.decode('hex'),
-            '7256c032'.decode('hex'),
-            '04e5b397'.decode('hex'),
-            '2823443f'.decode('hex'),
-            '2679dc69'.decode('hex')]
+            bytes.fromhex('4c93cf18'),
+            bytes.fromhex('41397eea'),
+            bytes.fromhex('082fef30'),
+            bytes.fromhex('66ef7655'),
+            bytes.fromhex('61c5938a'),
+            bytes.fromhex('33c083d4'),
+            bytes.fromhex('7256c032'),
+            bytes.fromhex('04e5b397'),
+            bytes.fromhex('2823443f'),
+            bytes.fromhex('2679dc69')]
         for count in range(len(expect)):
             hmac_sha1 = pyoath._HMAC(secret, struct.pack('!Q', count))
             result = pyoath._DT(hmac_sha1)
@@ -70,7 +81,7 @@ class HOTPTestCase(TestCase):
     """
 
     def test_hotp_vectors_1_thru_10(self):
-        secret = '12345678901234567890'
+        secret = b'12345678901234567890'
         expect = [
             '755224',
             '287082',
@@ -125,7 +136,7 @@ class TOTPTestCase(TestCase):
         hotp.assert_has_calls(calls)
 
     def test_totp_sha1_vectors(self):
-        secret = '1234567890' * 2  # 20 bytes
+        secret = b'1234567890' * 2  # 20 bytes
         expect = [
             '94287082',
             '07081804',
@@ -138,7 +149,7 @@ class TOTPTestCase(TestCase):
             self.assertEqual(expect[i], result)
 
     def test_totp_sha256_vectors(self):
-        secret = ('1234567890' * 3) + '12'  # 32 bytes for SHA-256
+        secret = (b'1234567890' * 3) + b'12'  # 32 bytes for SHA-256
         expect = [
             '46119246',
             '68084774',
@@ -151,7 +162,7 @@ class TOTPTestCase(TestCase):
             self.assertEqual(expect[i], result)
 
     def test_totp_sha512_vectors(self):
-        secret = ('1234567890' * 6) + '1234'  # 64 bytes for SHA-512
+        secret = (b'1234567890' * 6) + b'1234'  # 64 bytes for SHA-512
         expect = [
             '90693936',
             '25091201',
