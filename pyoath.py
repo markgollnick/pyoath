@@ -169,3 +169,87 @@ def TOTP(K, X=30, Digit=6, Mode=hashlib.sha1):
     unix_time = int(time.time())
     unix_step = unix_time / X
     return HOTP(K, unix_step, Digit, Mode)
+
+
+if __name__ == '__main__':
+    import argparse
+    import base64
+    import os
+    import stat
+    import sys
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    arg = parser.add_argument
+
+    arg('secret',
+        help='shared secret file between client and server',
+        type=str)
+
+    arg('--google',
+        help='Google Authenticator mode (assumes secret is encoded in base32)',
+        action='store_true',
+        required=False)
+
+    arg('--loop',
+        help='start an authenticator instance that will continue until killed',
+        action='store_true',
+        required=False)
+
+    args = parser.parse_args()
+
+    resolve = lambda *x: os.path.realpath(os.path.expanduser(os.path.join(*x)))
+
+    def chmod(file_path):
+        """Get the CHMOD bits of a file."""
+        s = os.stat(file_path)
+        return s.st_mode & (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+
+    secret = args.secret
+    secret_path = resolve(secret)
+
+    if os.path.isfile(secret_path):
+        # Encourage good old-fashioned practices
+        # with some good old-fashioned butt-kicking.
+        mode = chmod(secret_path)
+        if mode & 0o077 != 0:
+            msg = """\
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@          WARNING: UNPROTECTED SECRET KEY FILE!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Permissions 0%o for '%s' are too open.
+It is required that your secret key files are NOT accessible by others.
+This secret key will be ignored.
+""" % (mode, secret_path)
+            sys.stdout.write(msg)
+            sys.exit(1)
+
+        with open(secret_path, 'rb') as f:
+            data = f.read()
+            secret = base64.b32decode(data.upper()) if args.google else data
+
+    if args.loop:
+        last_otp = None
+        counter = 30
+        sys.stdout.write("""
+Authenticator Started!
+:----------------------------:--------:
+:       Code Wait Time       :  Code  :
+:----------------------------:--------:
+""")
+        while True:
+            try:
+                this_otp = TOTP(secret)
+                counter -= 1
+                if this_otp == last_otp:
+                    sys.stdout.write('.')
+                else:
+                    last_otp = this_otp
+                    sys.stdout.write('+' * counter + ': %s :\n' % this_otp)
+                    counter = 30
+                sys.stdout.flush()
+                time.sleep(1)
+            except KeyboardInterrupt:
+                sys.exit(0)
+
+    otp = TOTP(secret)
+    sys.stdout.write(otp + '\n')
