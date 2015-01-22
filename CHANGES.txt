@@ -1,1 +1,1 @@
-v1.0.0, 2014-12-13 — First public version
+v1.0.0, 2015-01-21 — First public version
