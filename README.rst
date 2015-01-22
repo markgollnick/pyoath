@@ -13,7 +13,7 @@ pyoath
 
 |
 
-.. image:: https://raw.githubusercontent.com/markgollnick/pyoath/master/2fa-padlocks.png
+.. image:: https://raw.githubusercontent.com/markgollnick/pyoath/master/padlocks.png
     :alt: Two-Factor Authentication
 
 A Python OATH implementation.
