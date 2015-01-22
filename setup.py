@@ -1,6 +1,7 @@
-"""PyPI package for pyoath."""
+"""PyPI Package descriptor file."""
 
-from setuptools import setup
+from ConfigParser import ConfigParser
+from distutils.core import setup
 
 
 def get_version(change_log):
@@ -25,17 +26,19 @@ def read(file_name):
         return data
 
 
-setup_args = dict(
-    name='pyoath',
-    version=get_version('CHANGES.txt'),
-    description='Python OATH (One-time Authentication) implementation.',
-    long_description=read('README.md'),
-    author='Mark R. Gollnick &#10013;',
-    author_email='mark.r.gollnick@gmail.com',
-    url='https://github.com/markgollnick/pyoath',
-    py_modules=['pyoath'],
-    scripts=['pyoath']
-)
+cfg = ConfigParser()
+cfg.read('setup.cfg')
+setup_args = dict(cfg.items('setup'))
+
+
+for key, val in setup_args.items():
+    if key.endswith('_file'):
+        data = get_version(val) if key.startswith('version') else read(val)
+        setup_args[key[:-5]] = data
+        del setup_args[key]
+    if key.endswith('_list'):
+        setup_args[key[:-5]] = [val.strip() for val in val.split(',')]
+        del setup_args[key]
 
 
 if __name__ == '__main__':
