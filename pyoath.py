@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
-u"""
+"""
 A Python OATH implementation.
 
-OATH is the Initiative for Open Authentication — not to be confused with OAuth,
+OATH is the Initiative for Open Authentication - not to be confused with OAuth,
 the Open Standard to *Authorization*, which is an entirely different paradigm.
 
 Pyoath implements the HOTP Algorithm defined in RFC 4226, published in December
