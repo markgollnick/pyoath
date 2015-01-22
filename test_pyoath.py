@@ -109,7 +109,6 @@ class TOTPTestCase(TestCase):
     """
 
     def setUp(self):
-        self.addCleanup(patch.stopall)
         self.time = patch.object(pyoath.time, 'time').start()
         self.time.side_effect = [
             59,          # 1970-01-01 00:00:59 +0000
@@ -119,6 +118,9 @@ class TOTPTestCase(TestCase):
             2000000000,  # 2033-05-18 03:33:20 +0000
             20000000000  # 2603-10-11 11:33:20 +0000
         ]
+
+    def tearDown(self):
+        patch.stopall()
 
     @patch.object(pyoath, 'HOTP')
     def test_totp_time_vectors(self, hotp):
