@@ -3,5 +3,6 @@
 *.py[a-z]
 *~
 .coverage
+MANIFEST
 build/
 dist/
