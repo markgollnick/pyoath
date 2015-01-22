@@ -1,13 +1,19 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
 
-"""
-Python OATH (One-time AuTHentication) implementation.
+u"""
+A Python OATH implementation.
 
-This file implements HOTP as defined in RFC 4226, published December, 2005, and
-TOTP as defined in RFC 6238, published May 2011.
+OATH is the Initiative for Open Authentication — not to be confused with OAuth,
+the Open Standard to *Authorization*, which is an entirely different paradigm.
+
+Pyoath implements the HOTP Algorithm defined in RFC 4226, published in December
+of 2005, and the TOTP Algorithm defined in RFC 6238, published in May of 2011.
+It has been designed for both the client- and server-sides of two-factor
+authentication systems.
 
 Many of the variable names in this code were used because those were the names
-used in those publications.  Much of the documentation and many of the comments
+used in those publications. Much of the documentation and many of the comments
 in this file was taken straight from the RFC documentation as well.
 
 Please read the files rfc4226.txt and rfc6238.txt for more information.
