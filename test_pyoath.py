@@ -11,9 +11,11 @@ try:
     import builtins  # Python >= 3.x
 except ImportError:  # pragma: no cover
     import __builtin__ as builtins  # Python < 3.x
+
     class bytes(builtins.bytes):
         def __new__(cls, x, encoding='ascii'):
             return super(bytes, cls).__new__(cls, x.encode(encoding))
+
         @classmethod
         def fromhex(cls, x):
             return x.decode('hex')
