@@ -1,6 +1,9 @@
 """PyPI Package descriptor file."""
-
-from ConfigParser import ConfigParser
+from sys import version_info
+if (version_info > (3, 0)):
+    from configparser import ConfigParser
+else:
+    from ConfigParser import ConfigParser
 from distutils.core import setup
 
 
