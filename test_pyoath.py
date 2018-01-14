@@ -14,8 +14,8 @@ try:
 except ImportError:  # Python <3
     import __builtin__ as builtins
 
-from mock import mock_open, patch, call
-from nose.tools import assert_dict_contains_subset, assert_equal
+from mock import mock_open, patch
+from nose.tools import assert_dict_contains_subset, assert_equal, assert_raises
 
 import pyoath  # Unit Under Test
 
@@ -165,6 +165,44 @@ def test_get_chmod_bits():
 
     for supply, expect in scenarios:
         yield test, supply, expect
+
+
+def test_graceful_encode():
+    def test(supply, encoding, expect):
+        if isinstance(expect, type) and issubclass(expect, BaseException):
+            assert_raises(expect, pyoath._graceful_encode, supply, encoding)
+        else:
+            actual = pyoath._graceful_encode(supply, encoding)
+            assert_equal(expect, actual)
+
+    scenarios = [(
+        'ASCII, ISO-8859-1 (LATIN-1), and WINDOWS-1252 are dead.', 'utf-8',
+        b'ASCII, ISO-8859-1 (LATIN-1), and WINDOWS-1252 are dead.',
+    ), (
+        b'ASCII, ISO-8859-1 (LATIN-1), and WINDOWS-1252 are dead.', 'utf-8',
+        b'ASCII, ISO-8859-1 (LATIN-1), and WINDOWS-1252 are dead.',
+    ), (
+        'Long live Üñîçø∂é and ü†ƒ-∞!', 'utf-8',
+        'Long live Üñîçø∂é and ü†ƒ-∞!'.encode('utf-8'),
+    ), (
+        'Long live Üñîçø∂é and ü†ƒ-∞!'.encode('utf-8'), 'utf-8',
+        'Long live Üñîçø∂é and ü†ƒ-∞!'.encode('utf-8'),
+    ), (
+        b'\x4a\xc0\xff\xee', 'utf-8',  # Raw binary comes through unharmed
+        b'\x4a\xc0\xff\xee',
+    ), (
+        '€ ¢ £ ¤ ¥', 'windows-1252',  # WINDOWS-1252 is commonly mistaken for
+        b'\x80 \xa2 \xa3 \xa4 \xa5',  # LATIN-1, but LATIN-1 does not have Euro
+    ), (
+        '€ ¢ £ ¤ ¥', 'iso-8859-1',  # ISO-8859-1, aka LATIN-1
+        SystemExit,
+    ), (
+        Ellipsis, '…',  # Unsupported object type
+        Exception,
+    )]
+
+    for supply, encoding, expect in scenarios:
+        yield test, supply, encoding, expect
 
 
 def test_parse_args():

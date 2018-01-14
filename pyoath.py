@@ -188,6 +188,40 @@ def _get_chmod_bits(file_path):
     return s.st_mode & (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
 
+def _graceful_encode(s, encoding='utf-8', errors='strict'):
+    """
+    Convert a unicode string to a UTF-8 encoded bytestring.
+
+    If the string is already a bytestring, return it unmodified.
+
+    :param s: The string to encode as a bytestring
+    :type s: str
+    :param encoding: The encoding to use. Defaults to UTF-8.
+    :type encoding: str
+    :param errors: The error policy to employ when lossless encoding fails.
+        Defaults to strict, which raises and exception. Can be set to replace
+        for lossy encodes.
+    :type errors: str
+    :return: The string in encoded bytestring form,
+            or the original input if the string was already a bytestring.
+    :rtype: bytes
+    """
+    try:
+        return s.encode(encoding=encoding, errors=errors)
+    except (AttributeError, UnicodeDecodeError):
+        if hasattr(s, 'startswith'):  # Already a bytestring
+            return s
+        raise
+    except UnicodeEncodeError:
+        sys.stderr.write("""\
+Python 3 does not support arbitrary binary input supplied as command-line args.
+If your key contains raw binary, write it to a file, protect its permissions
+with, e.g., `chmod 600 secret.2fa`, and then pass the file path as an argument
+to pyoath.
+""")
+        sys.exit(1)
+
+
 def _parse_args(args):
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -238,10 +272,7 @@ This secret key will be ignored.
                 contents = secret.decode('utf-8').strip().upper()
                 secret = base64.b32decode(contents)
 
-    try:
-        secret = secret.encode('utf-8')  # Arguments are Unicode on Python >=3
-    except (AttributeError, UnicodeDecodeError):  # pragma: no cover
-        pass
+    secret = _graceful_encode(secret)
 
     if options.loop:
         last_otp = None
