@@ -1,4 +1,5 @@
 coverage==3.7.1
+docutils==0.14
 flake8==2.2.5
 mccabe==0.3  # mccabe>=0.2.1 required by flake8==2.3.0
 mock==1.0.1
