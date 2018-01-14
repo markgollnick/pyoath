@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# encoding=utf-8
 
 """
 A Python OATH implementation.
@@ -18,10 +19,17 @@ in this file was taken straight from the RFC documentation as well.
 Please read RFC 4226 and RFC 6238 for more information.
 """
 
+from __future__ import unicode_literals
+import argparse
+import base64
 import hashlib
 import hmac
+import os
+import stat
 import struct
+import sys
 import time
+from os.path import expanduser, isfile, realpath
 
 
 def _DT(String):
@@ -174,13 +182,14 @@ def TOTP(K, X=30, Digit=6, Mode=hashlib.sha1):
     return HOTP(K, unix_step, Digit, Mode)
 
 
-if __name__ == '__main__':
-    import argparse
-    import base64
-    import os
-    import stat
-    import sys
+def _get_chmod_bits(file_path):
+    """Get the CHMOD bits of a file."""
+    s = os.stat(file_path)
+    return s.st_mode & (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
+
+def _parse_args(args):
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     arg = parser.add_argument
 
@@ -198,39 +207,43 @@ if __name__ == '__main__':
         action='store_true',
         required=False)
 
-    args = parser.parse_args()
+    return parser.parse_args(args or sys.argv[1:])
 
-    resolve = lambda *x: os.path.realpath(os.path.expanduser(os.path.join(*x)))
 
-    def chmod(file_path):
-        """Get the CHMOD bits of a file."""
-        s = os.stat(file_path)
-        return s.st_mode & (stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+def main(*args):
+    """Program entry point for command-line use."""
+    options = _parse_args(args)
+    secret = options.secret
+    secret_path = realpath(expanduser(secret))
 
-    secret = args.secret
-    secret_path = resolve(secret)
-
-    if os.path.isfile(secret_path):
+    if isfile(secret_path):
         # Encourage good old-fashioned practices
         # with some good old-fashioned butt-kicking.
-        mode = chmod(secret_path)
+        mode = _get_chmod_bits(secret_path)
         if mode & 0o077 != 0:
             msg = """\
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@          WARNING: UNPROTECTED SECRET KEY FILE!          @
+@          WARNING: UNPROTECTED SECRET 2FA FILE!          @
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 Permissions 0%o for '%s' are too open.
 It is required that your secret key files are NOT accessible by others.
 This secret key will be ignored.
 """ % (mode, secret_path)
-            sys.stdout.write(msg)
-            sys.exit(1)
+            sys.stderr.write(msg)
+            return 2
 
         with open(secret_path, 'rb') as f:
-            data = f.read()
-            secret = base64.b32decode(data.upper()) if args.google else data
+            secret = f.read()
+            if options.google:
+                contents = secret.decode('utf-8').strip().upper()
+                secret = base64.b32decode(contents)
 
-    if args.loop:
+    try:
+        secret = secret.encode('utf-8')  # Arguments are Unicode on Python >=3
+    except (AttributeError, UnicodeDecodeError):  # pragma: no cover
+        pass
+
+    if options.loop:
         last_otp = None
         counter = 30
         sys.stdout.write("""
@@ -252,7 +265,12 @@ Authenticator Started!
                 sys.stdout.flush()
                 time.sleep(1)
             except KeyboardInterrupt:
-                sys.exit(0)
+                return 0
 
     otp = TOTP(secret)
     sys.stdout.write(otp + '\n')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(*sys.argv[1:]))

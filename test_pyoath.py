@@ -1,11 +1,21 @@
+# encoding=utf-8
 """Unit tests for the pyoath module."""
 
+from __future__ import unicode_literals
 import codecs
 import hashlib
 import struct
+import sys
+from io import StringIO
+from unittest import TestCase
 
-from mock import patch
-from nose.tools import assert_equal
+try:
+    import builtins
+except ImportError:  # Python <3
+    import __builtin__ as builtins
+
+from mock import mock_open, patch, call
+from nose.tools import assert_dict_contains_subset, assert_equal
 
 import pyoath  # Unit Under Test
 
@@ -138,3 +148,235 @@ def test_TOTP():
 
     for unix_time, T, TOTP, Mode, in scenarios:
         yield test, unix_time, T, TOTP, Mode
+
+
+def test_get_chmod_bits():
+    def test(supply, expect):
+        r, w, x = expect
+        bits = pyoath._get_chmod_bits(supply)
+        assert_equal(r, (bits >> 8) & 1, 'read permissions mis-match')
+        assert_equal(w, (bits >> 7) & 1, 'write permissions mis-match')
+        assert_equal(x, (bits >> 6) & 1, 'execute permissions mis-match')
+
+    scenarios = [
+        ('pyoath.py', (1, 1, 1)),
+        ('test_pyoath.py', (1, 1, 0)),
+    ]
+
+    for supply, expect in scenarios:
+        yield test, supply, expect
+
+
+def test_parse_args():
+    def test(supply, expect):
+        actual = dict(vars(pyoath._parse_args(supply)))
+        assert_dict_contains_subset(expect, actual)
+
+    scenarios = [(
+        ['opensesame'],
+        {'google': False, 'loop': False, 'secret': 'opensesame'},
+    ), (
+        ['N5YGK3TTMVZWC3LF', '--google'],
+        {'google': True, 'loop': False, 'secret': 'N5YGK3TTMVZWC3LF'},
+    ), (
+        ['opensesame', '--loop'],
+        {'google': False, 'loop': True, 'secret': 'opensesame'},
+    ), (
+        ['N5YGK3TTMVZWC3LF', '--google', '--loop'],
+        {'google': True, 'loop': True, 'secret': 'N5YGK3TTMVZWC3LF'},
+    )]
+
+    for supply, expect in scenarios:
+        yield test, supply, expect
+
+
+class MainTest(TestCase):
+    def setUp(self):
+        patch.object(
+            pyoath, 'expanduser', new=lambda s: s.replace('~', '/home/user', 1)
+        ).start()
+
+        patch.object(
+            pyoath, 'realpath', new=lambda s: ('/abs/' + s).replace('//', '/')
+        ).start()
+
+        self.mock_chmod = patch.object(pyoath, '_get_chmod_bits').start()
+        self.mock_isfile = patch.object(pyoath, 'isfile').start()
+        self.mock_sleep = patch.object(pyoath.time, 'sleep').start()
+        self.mock_time = patch.object(pyoath.time, 'time').start()
+
+        self.mock_time.return_value = 1111111109  # 2005-03-18 01:58:29 Z
+
+        self.mock_open = mock_open()
+        self.mock_file = self.mock_open.return_value
+
+        self.stdout = StringIO()
+        self.stderr = StringIO()
+        patch.object(pyoath.sys, 'stdout', new=self.stdout).start()
+        patch.object(pyoath.sys, 'stderr', new=self.stderr).start()
+
+    def tearDown(self):
+        patch.stopall()
+
+    def _args(self, *args):
+        if sys.version_info >= (3, 0, 0):
+            return args
+        else:
+            return map(lambda s: s.encode('utf-8'), args)
+
+    def _assert_stdout(self, contents):
+        self.stdout.seek(0)
+        self.assertEqual(contents, self.stdout.read())
+
+    def _assert_stderr(self, contents):
+        self.stderr.seek(0)
+        self.assertEqual(contents, self.stderr.read())
+
+    def test_happy_path(self):
+        self.mock_isfile.return_value = False
+        result = pyoath.main(*self._args('12345678901234567890'))
+        assert_equal(0, result)
+        self.mock_isfile.assert_called_once_with('/abs/12345678901234567890')
+        self._assert_stdout('081804\n')
+        self._assert_stderr('')
+
+    def test_looping_authenticator_opened_on_very_first_second(self):
+        self.mock_isfile.return_value = False
+        self.mock_time.side_effect = list(
+            range(1111111110 - 30, 1111111110 + 4)
+        ) + [KeyboardInterrupt]
+        result = pyoath.main(*self._args(
+            '12345678901234567890', '--loop'
+        ))
+        assert_equal(0, result)
+        self._assert_stdout("""
+Authenticator Started!
+:----------------------------:--------:
+:       Code Wait Time       :  Code  :
+:----------------------------:--------:
++++++++++++++++++++++++++++++: 081804 :
+.............................: 050471 :
+...""")
+        self._assert_stderr('')
+
+    def test_looping_authenticator_opened_on_second_second(self):
+        self.mock_isfile.return_value = False
+        self.mock_time.side_effect = list(
+            range(1111111110 - 29, 1111111110 + 4)
+        ) + [KeyboardInterrupt]
+        result = pyoath.main(*self._args(
+            '12345678901234567890', '--loop'
+        ))
+        assert_equal(0, result)
+        self._assert_stdout("""
+Authenticator Started!
+:----------------------------:--------:
+:       Code Wait Time       :  Code  :
+:----------------------------:--------:
++++++++++++++++++++++++++++++: 081804 :
+............................+: 050471 :
+...""")
+        self._assert_stderr('')
+
+    def test_looping_authenticator_opened_on_fifteenth_second(self):
+        self.mock_isfile.return_value = False
+        self.mock_time.side_effect = list(
+            range(1111111110 - 16, 1111111110 + 4)
+        ) + [KeyboardInterrupt]
+        result = pyoath.main(*self._args(
+            '12345678901234567890', '--loop'
+        ))
+        assert_equal(0, result)
+        self._assert_stdout("""
+Authenticator Started!
+:----------------------------:--------:
+:       Code Wait Time       :  Code  :
+:----------------------------:--------:
++++++++++++++++++++++++++++++: 081804 :
+...............++++++++++++++: 050471 :
+...""")
+        self._assert_stderr('')
+
+    def test_looping_authenticator_opened_on_twenty_ninth_second(self):
+        self.mock_isfile.return_value = False
+        self.mock_time.side_effect = list(
+            range(1111111110 - 2, 1111111110 + 4)
+        ) + [KeyboardInterrupt]
+        result = pyoath.main(*self._args(
+            '12345678901234567890', '--loop'
+        ))
+        assert_equal(0, result)
+        self._assert_stdout("""
+Authenticator Started!
+:----------------------------:--------:
+:       Code Wait Time       :  Code  :
+:----------------------------:--------:
++++++++++++++++++++++++++++++: 081804 :
+.++++++++++++++++++++++++++++: 050471 :
+...""")
+        self._assert_stderr('')
+
+    def test_looping_authenticator_opened_on_very_last_second(self):
+        self.mock_isfile.return_value = False
+        self.mock_time.side_effect = [
+            1111111109,
+            1111111110,
+            1111111111,
+            1111111112,
+            1111111113,
+            KeyboardInterrupt,
+        ]
+        result = pyoath.main(*self._args(
+            '12345678901234567890', '--loop'
+        ))
+        assert_equal(0, result)
+        self._assert_stdout("""
+Authenticator Started!
+:----------------------------:--------:
+:       Code Wait Time       :  Code  :
+:----------------------------:--------:
++++++++++++++++++++++++++++++: 081804 :
++++++++++++++++++++++++++++++: 050471 :
+...""")
+        self._assert_stderr('')
+
+    def test_read_secret_from_raw_2fa_file(self):
+        self.mock_isfile.return_value = True
+        self.mock_chmod.return_value = 0o600
+        self.mock_file.read.return_value = b'12345678901234567890'
+        with patch.object(builtins, 'open', self.mock_open):
+            result = pyoath.main(*self._args('secret.2fa'))
+        assert_equal(0, result)
+        self.mock_open.assert_called_once_with('/abs/secret.2fa', 'rb')
+        self.mock_file.read.assert_called_once_with()
+        self._assert_stdout('081804\n')
+        self._assert_stderr('')
+
+    def test_read_secret_from_google_2fa_file(self):
+        self.mock_isfile.return_value = True
+        self.mock_chmod.return_value = 0o600
+        self.mock_file.read.return_value = b'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'
+        with patch.object(builtins, 'open', self.mock_open):
+            result = pyoath.main(*self._args('google.2fa', '--google'))
+        assert_equal(0, result)
+        self.mock_open.assert_called_once_with('/abs/google.2fa', 'rb')
+        self.mock_file.read.assert_called_once_with()
+        self._assert_stdout('081804\n')
+        self._assert_stderr('')
+
+    def test_refuse_to_read_unprotected_2fa_file(self):
+        self.mock_isfile.return_value = True
+        self.mock_chmod.return_value = 0o644
+        with patch.object(builtins, 'open', self.mock_open):
+            result = pyoath.main(*self._args('secret.2fa'))
+        assert_equal(2, result)
+        self.mock_chmod.assert_called_once_with('/abs/secret.2fa')
+        self._assert_stdout('')
+        self._assert_stderr("""\
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@          WARNING: UNPROTECTED SECRET 2FA FILE!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Permissions 0644 for '/abs/secret.2fa' are too open.
+It is required that your secret key files are NOT accessible by others.
+This secret key will be ignored.
+""")
