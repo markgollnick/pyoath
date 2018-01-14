@@ -1,1 +1,2 @@
 v1.0.0, 2015-01-21 — First public version
+v1.0.1, 2018-01-14 — Full Python 3.x support
