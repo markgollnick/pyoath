@@ -45,16 +45,16 @@ def test_DT():
 
     # These tests are taken straight out of RFC 4226.
     results = [
-        codecs.decode('4c93cf18', 'hex'),
-        codecs.decode('41397eea', 'hex'),
-        codecs.decode('082fef30', 'hex'),
-        codecs.decode('66ef7655', 'hex'),
-        codecs.decode('61c5938a', 'hex'),
-        codecs.decode('33c083d4', 'hex'),
-        codecs.decode('7256c032', 'hex'),
-        codecs.decode('04e5b397', 'hex'),
-        codecs.decode('2823443f', 'hex'),
-        codecs.decode('2679dc69', 'hex'),
+        0x4c93cf18,
+        0x41397eea,
+        0x082fef30,
+        0x66ef7655,
+        0x61c5938a,
+        0x33c083d4,
+        0x7256c032,
+        0x04e5b397,
+        0x2823443f,
+        0x2679dc69,
     ]
 
     for i, expect in enumerate(results):
